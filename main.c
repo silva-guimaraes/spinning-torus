@@ -52,67 +52,29 @@ int main(void) {
     const int CENTER_Y = (int) (HEIGHT/2); 
     const int CENTER_X = (int) (WIDTH/2);
 
-    // point points[] = {
-    //
-    //     (point){ 1,  1,  1},
-    //     (point){-1,  1,  1},
-    //     (point){-1,  1, -1},
-    //     (point){ 1,  1, -1},
-    //     (point){ 1, -1,  1},
-    //     (point){-1, -1,  1},
-    //     (point){-1, -1, -1},
-    //     (point){ 1, -1, -1},
-    //
-    //     // (point){ 1, -1,  0},
-    //     // (point){-1, -1,  0},
-    //     // (point){ 0, -1, -1},
-    //     // (point){ 0, -1,  1},
-    //     //
-    //     // (point){ 1, 1,  0},
-    //     // (point){-1, 1,  0},
-    //     // (point){ 0, 1, -1},
-    //     // (point){ 0, 1,  1},
-    //     //
-    //     // (point){ 1, 0,  1},
-    //     // (point){-1, 0,  1},
-    //     // (point){-1, 0, -1},
-    //     // (point){ 1, 0, -1},
-    // };
-
-    int r = 2;
-    point* points = malloc(sizeof(point));
+    const int r = 1;
+    const int R = r*2;
+    point* points = malloc(0);
     if (!points) {
         fprintf(stderr, "points = malloc()!\n");
         return 1;
     }
-    size_t points_amount = 1;
+    size_t points_amount = 0;
 
-    for (float tetha = 0; tetha < PI; tetha += 0.1) {
-        for (float phi = 0; phi < PI*2; phi += 0.1) 
+    for (float tetha = 0; tetha < PI*2; tetha += 0.3) {
+        for (float phi = 0; phi < PI*2; phi += 0.2) 
         {
-            points[points_amount - 1] = (point) {  
-                r * sinf(tetha) * cosf(phi),
-                r * sinf(tetha) * sinf(phi),
-                r * cosf(tetha)
-            };
             points = realloc(points, ++points_amount * sizeof(point));
+            points[points_amount - 1] = (point) {  
+                (R + r * cosf(tetha)) * cosf(phi),
+                (R + r * cosf(tetha)) * sinf(phi),
+                r * sinf(tetha)
+            };
         }
     }
 
-    // printf("%ld\n", points_amount);
-
-    // endwin();
-    // return 0;
-
-
-
-    float fov = 50;
-
-    for (size_t i = 0; i < points_amount; i++) {
-        points[i].x *= 1.5;
-        points[i].y *= 1.5;
-        points[i].z *= 1.5;
-    }
+    const float FOV = 20;
+    const float DISTANCE = 4;
 
     char* buf = malloc(200);
     if (!buf) {
@@ -127,38 +89,36 @@ int main(void) {
 
             point c = points[i];
 
-            // rodar ao entorno do eixo Y
             c.x = points[i].x * cosf(angle) + points[i].z * sinf(angle);
             c.z = -points[i].x * sinf(angle) + points[i].z * cosf(angle);
-            c.z += 8;
+            c.z += DISTANCE;
 
             point d = c;
 
-            // rodar ao entorno do eixo Z
-            d.x = c.x * cosf(angle) - c.y * sinf(angle);
-            d.y = c.x * sinf(angle) + c.y * cosf(angle);
+            d.x = c.x * cosf(angle) + c.y * sinf(angle);
+            d.y = -c.x * sinf(angle) + c.y * cosf(angle);
 
 
-            // cria o efeito de perspectiva
             point projected = (point)
-            {   .x = d.x * fov / d.z,
-                .y = d.y * fov / d.z,
+            {   .x = d.x * FOV / d.z,
+                .y = d.y * FOV / d.z,
             };
 
             projected.x += CENTER_X;
             projected.y += CENTER_Y;
 
             anti_aliased_draw_point(win, projected);
-            sprintf(buf, "%f", c.x);
+            sprintf(buf, "%f", angle);
             mvwaddstr(win, 0, 0, buf);
             
         }
 
         refresh();
-        usleep(.1 * 1000 * 1000);
+        usleep(.05 * 1000 * 1000);
     }
 
     free(buf);
+    free(points);
     endwin();
     
     return 0;

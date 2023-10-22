@@ -21,19 +21,19 @@ void draw_point(WINDOW* w, point p) {
     mvwaddch(w, p.y, p.x*2, 'o');
 }
 
-// void anti_aliased_draw_point(WINDOW* w, point p) {
-//     float rounded_x = roundf(p.x);
-//     float rounded_y = roundf(p.y);
-//
-//     float percent_x = 1.0f - fabs(p.x - rounded_x);
-//     float percent_y = 1.0f - fabs(p.y - rounded_y);
-//
-//     float percent = percent_x * percent_y;
-//
-//     char ascii = ASCII[(int) roundf(percent * GRAYSCALE) - 1];
-//
-//     mvwaddch(w, rounded_y, rounded_x*2, ascii);
-// }
+void anti_aliased_draw_point(WINDOW* w, point p) {
+    float rounded_x = roundf(p.x);
+    float rounded_y = roundf(p.y);
+
+    float percent_x = 1.0f - fabs(p.x - rounded_x);
+    float percent_y = 1.0f - fabs(p.y - rounded_y);
+
+    float percent = percent_x * percent_y;
+
+    char ascii = ASCII[(int) roundf(percent * GRAYSCALE) - 1];
+
+    mvwaddch(w, rounded_y, rounded_x*2, ascii);
+}
 
 int main(void) {
     printf("hello world\n");
@@ -52,60 +52,105 @@ int main(void) {
     const int CENTER_Y = (int) (HEIGHT/2); 
     const int CENTER_X = (int) (WIDTH/2);
 
-    point points[] = {
+    // point points[] = {
+    //
+    //     (point){ 1,  1,  1},
+    //     (point){-1,  1,  1},
+    //     (point){-1,  1, -1},
+    //     (point){ 1,  1, -1},
+    //     (point){ 1, -1,  1},
+    //     (point){-1, -1,  1},
+    //     (point){-1, -1, -1},
+    //     (point){ 1, -1, -1},
+    //
+    //     // (point){ 1, -1,  0},
+    //     // (point){-1, -1,  0},
+    //     // (point){ 0, -1, -1},
+    //     // (point){ 0, -1,  1},
+    //     //
+    //     // (point){ 1, 1,  0},
+    //     // (point){-1, 1,  0},
+    //     // (point){ 0, 1, -1},
+    //     // (point){ 0, 1,  1},
+    //     //
+    //     // (point){ 1, 0,  1},
+    //     // (point){-1, 0,  1},
+    //     // (point){-1, 0, -1},
+    //     // (point){ 1, 0, -1},
+    // };
 
-        (point){ 1,  1,  1},
-        (point){-1,  1,  1},
-        (point){-1,  1, -1},
-        (point){ 1,  1, -1},
-        (point){ 1, -1,  1},
-        (point){-1, -1,  1},
-        (point){-1, -1, -1},
-        (point){ 1, -1, -1},
+    int r = 2;
+    point* points = malloc(sizeof(point));
+    if (!points) {
+        fprintf(stderr, "points = malloc()!\n");
+        return 1;
+    }
+    size_t points_amount = 1;
 
-        // (point){ 1, -1,  0},
-        // (point){-1, -1,  0},
-        // (point){ 0, -1, -1},
-        // (point){ 0, -1,  1},
-    };
-
-
-    size_t points_amount = sizeof(points) / sizeof(points[0]);
-
-    float fov = 40;
-
-    for (size_t i = 0; i < points_amount; i++) {
-        points[i].x *= 2;
-        points[i].y *= 2;
-        points[i].z *= 2;
+    for (float tetha = 0; tetha < PI; tetha += 0.1) {
+        for (float phi = 0; phi < PI*2; phi += 0.1) 
+        {
+            points[points_amount - 1] = (point) {  
+                r * sinf(tetha) * cosf(phi),
+                r * sinf(tetha) * sinf(phi),
+                r * cosf(tetha)
+            };
+            points = realloc(points, ++points_amount * sizeof(point));
+        }
     }
 
+    // printf("%ld\n", points_amount);
+
+    // endwin();
+    // return 0;
+
+
+
+    float fov = 50;
+
+    for (size_t i = 0; i < points_amount; i++) {
+        points[i].x *= 1.5;
+        points[i].y *= 1.5;
+        points[i].z *= 1.5;
+    }
+
+    char* buf = malloc(200);
+    if (!buf) {
+        fprintf(stderr, "char* buf = malloc()!\n");
+        return 1;
+    }
     
-    for (float angle = 0;; angle += 0.08) {
+    for (float angle = 0;; angle += 0.1) {
         clear();
 
         for (size_t i = 0; i < points_amount; i++) {
 
             point c = points[i];
 
+            // rodar ao entorno do eixo Y
             c.x = points[i].x * cosf(angle) + points[i].z * sinf(angle);
             c.z = -points[i].x * sinf(angle) + points[i].z * cosf(angle);
-
             c.z += 8;
 
+            point d = c;
 
+            // rodar ao entorno do eixo Z
+            d.x = c.x * cosf(angle) - c.y * sinf(angle);
+            d.y = c.x * sinf(angle) + c.y * cosf(angle);
+
+
+            // cria o efeito de perspectiva
             point projected = (point)
-            {   .x = c.x * fov / c.z,
-                .y = c.y * fov / c.z,
+            {   .x = d.x * fov / d.z,
+                .y = d.y * fov / d.z,
             };
 
             projected.x += CENTER_X;
             projected.y += CENTER_Y;
 
-            draw_point(win, projected);
-            char* foo = malloc(200);
-            sprintf(foo, "%f", c.x);
-            mvwaddstr(win, 0, 0, foo);
+            anti_aliased_draw_point(win, projected);
+            sprintf(buf, "%f", c.x);
+            mvwaddstr(win, 0, 0, buf);
             
         }
 
@@ -113,6 +158,7 @@ int main(void) {
         usleep(.1 * 1000 * 1000);
     }
 
+    free(buf);
     endwin();
     
     return 0;
